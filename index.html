@@ -1,26 +1,28 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meine Website</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        h1 {
-            color: #4CAF50;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bücher-Inventar</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h1>Willkommen auf meiner ersten Website!</h1>
+  <div class="container">
+    <h1>Bücher-Inventar</h1>
+    <input type="text" id="isbnInput" placeholder="ISBN scannen oder eingeben..." autofocus />
+    <table>
+      <thead>
+        <tr>
+          <th>Cover</th>
+          <th>ISBN</th>
+          <th>Titel</th>
+          <th>Autor</th>
+          <th>Anzahl</th>
+        </tr>
+      </thead>
+      <tbody id="bookList"></tbody>
+    </table>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>
