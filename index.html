@@ -1,88 +1,170 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bücher Inventar</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buch-Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 20px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    img {
+      max-width: 60px;
+      height: auto;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Bücher Inventar</h1>
-    
-    <!-- Kamera-Zugriff für das Scannen -->
-    <video id="scanner" autoplay playsinline></video>
-    <button onclick="startScanner()">Scanner starten</button>
-    
-    <!-- Tabelle zur Anzeige der Bücher -->
-    <table border="1" id="bookTable">
-        <thead>
-            <tr>
-                <th>ISBN</th>
-                <th>Titel</th>
-                <th>Autor</th>
-                <th>Cover</th>
-                <th>Anzahl</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
 
-    <script>
-        let video = document.getElementById('scanner');
+<h1>Buch-Scanner</h1>
+<button onclick="startScanner()">📷 Scanner starten</button>
+<table id="bookTable">
+  <thead>
+    <tr>
+      <th>ISBN</th>
+      <th>Titel</th>
+      <th>Autor</th>
+      <th>Cover</th>
+      <th>Anzahl</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
-        async function startScanner() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            video.srcObject = stream;
-            
-            const barcodeDetector = new BarcodeDetector({ formats: ['ean_13'] });
+<script>
+  // Daten aus localStorage laden
+  const books = JSON.parse(localStorage.getItem('books')) || [];
 
-            // Regelmäßiges Überprüfen auf Barcode-Erkennung
-            setInterval(async () => {
-                const barcodes = await barcodeDetector.detect(video);
-                if (barcodes.length > 0) {
-                    const isbn = barcodes[0].rawValue;
-                    console.log('Gefundene ISBN:', isbn);
-                    fetchBookData(isbn);
-                }
-            }, 500);
-        }
+  function displayBooks() {
+    const tableBody = document.querySelector("#bookTable tbody");
+    tableBody.innerHTML = '';
+    books.forEach(book => {
+      const row = tableBody.insertRow();
+      row.innerHTML = `
+        <td>${book.isbn}</td>
+        <td>${book.title}</td>
+        <td>${book.author}</td>
+        <td><img src="${book.cover}" alt="Cover" /></td>
+        <td>${book.count}</td>
+      `;
+    });
+  }
 
-        async function fetchBookData(isbn) {
-            const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
-            const data = await response.json();
-            
-            if (data.totalItems > 0) {
-                const book = data.items[0].volumeInfo;
-                const title = book.title || "Unbekannt";
-                const author = book.authors ? book.authors.join(", ") : "Unbekannt";
-                const cover = book.imageLinks ? book.imageLinks.thumbnail : "";
+  function saveBooks() {
+    localStorage.setItem('books', JSON.stringify(books));
+  }
 
-                updateTable(isbn, title, author, cover);
-            } else {
-                updateTable(isbn, "Nicht gefunden", "Nicht gefunden", "");
-            }
-        }
+  async function fetchBookData(isbn) {
+    const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.totalItems > 0) {
+      const book = data.items[0].volumeInfo;
+      return {
+        title: book.title || "Unbekannt",
+        author: book.authors ? book.authors.join(", ") : "Unbekannt",
+        cover: book.imageLinks ? book.imageLinks.thumbnail : ""
+      };
+    }
+    return null;
+  }
 
-        function updateTable(isbn, title, author, cover) {
-            const table = document.getElementById('bookTable').getElementsByTagName('tbody')[0];
-            const rows = table.getElementsByTagName('tr');
+  async function processISBN(isbn) {
+    let existingBook = books.find(book => book.isbn === isbn);
+    if (existingBook) {
+      existingBook.count++;
+    } else {
+      const bookData = await fetchBookData(isbn);
+      if (bookData) {
+        books.push({
+          isbn: isbn,
+          title: bookData.title,
+          author: bookData.author,
+          cover: bookData.cover,
+          count: 1
+        });
+      }
+    }
+    saveBooks();
+    displayBooks();
+  }
 
-            // Prüfen, ob ISBN bereits vorhanden ist
-            for (let row of rows) {
-                if (row.cells[0].innerText === isbn) {
-                    let countCell = row.cells[4];
-                    countCell.innerText = parseInt(countCell.innerText) + 1;
-                    return;
-                }
-            }
+  function startScanner() {
+    const video = document.createElement('video');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    document.body.appendChild(video);
 
-            // Neues Buch hinzufügen
-            let newRow = table.insertRow();
-            newRow.insertCell(0).innerText = isbn;
-            newRow.insertCell(1).innerText = title;
-            newRow.insertCell(2).innerText = author;
-            newRow.insertCell(3).innerHTML = cover ? `<img src="${cover}" alt="Cover" style="width:50px;height:auto;">` : '';
-            newRow.insertCell(4).innerText = 1;
-        }
-    </script>
+    // Kamera mit Standardmodus öffnen
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.play();
+
+        // Canvas-Bild abgreifen und auf Barcode prüfen
+        setInterval(() => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const codeReader = new ZXing.BrowserMultiFormatReader();
+
+          codeReader.decodeFromImageData(imageData)
+            .then(result => {
+              const isbn = result.text;
+              processISBN(isbn);
+              stream.getTracks().forEach(track => track.stop());
+              video.remove();
+              canvas.remove();
+            })
+            .catch(() => {});
+        }, 1000);
+      })
+      .catch(err => alert("Fehler beim Zugriff auf die Kamera: " + err.message));
+  }
+
+  window.onload = displayBooks;
+</script>
+<script src="https://unpkg.com/@zxing/library@0.18.6"></script>
+
 </body>
 </html>
