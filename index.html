@@ -69,8 +69,8 @@
       padding: 10px;
     }
     #cameraContainer video {
-      width: 640px;
-      height: 480px;
+      width: 640px; /* Breiteres Kamerafenster */
+      height: 480px; /* Höhe des Kamerafensters */
     }
     #controls {
       display: flex;
@@ -228,7 +228,10 @@
         });
 
       })
-      .catch(err => alert("Fehler beim Zugriff auf die Kamera: " + err.message));
+      .catch(err => {
+        alert("Fehler beim Zugriff auf die Kamera: " + err.message);
+        console.error("Fehler beim Zugriff auf die Kamera:", err);
+      });
   }
 
   window.onload = displayBooks;
