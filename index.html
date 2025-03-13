@@ -56,12 +56,30 @@
       object-fit: cover;
       border-radius: 4px;
     }
+    #cameraContainer {
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background-color: white;
+      border: 2px solid #4CAF50;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    #cameraContainer video {
+      width: 300px;
+    }
   </style>
 </head>
 <body>
 
 <h1>Buchinventar</h1>
 <button onclick="startScanner()">📷 Scanner starten</button>
+<div id="cameraContainer">
+  <video id="video"></video>
+</div>
 <table id="bookTable">
   <thead>
     <tr>
@@ -133,10 +151,12 @@
   }
 
   function startScanner() {
-    const video = document.createElement('video');
+    const video = document.getElementById('video');
+    const cameraContainer = document.getElementById('cameraContainer');
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    document.body.appendChild(video);
+
+    cameraContainer.style.display = 'block';
 
     // Kamera mit "environment" für Hauptkamera aktivieren
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -157,8 +177,8 @@
               const isbn = result.text;
               processISBN(isbn);
               stream.getTracks().forEach(track => track.stop());
-              video.remove();
-              canvas.remove();
+              video.srcObject = null;
+              cameraContainer.style.display = 'none';
             })
             .catch(() => {});
         }, 1000);
