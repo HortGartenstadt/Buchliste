@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buchinventar</title>
   <style>
     body {
@@ -69,8 +69,8 @@
       padding: 10px;
     }
     #cameraContainer video {
-      width: 640px; /* Breiteres Kamerafenster */
-      height: 480px; /* Höhe des Kamerafensters */
+      width: 640px;
+      height: 480px;
     }
     #controls {
       display: flex;
@@ -83,7 +83,6 @@
   </style>
 </head>
 <body>
-
 <h1>Buchinventar</h1>
 <button onclick="startScanner()">📷 Scanner starten</button>
 <div id="cameraContainer">
@@ -107,7 +106,7 @@
   </thead>
   <tbody></tbody>
 </table>
-
+<script src="https://unpkg.com/@zxing/library@0.18.6"></script>
 <script>
   const books = JSON.parse(localStorage.getItem('books')) || [];
 
@@ -175,13 +174,12 @@
 
     cameraContainer.style.display = 'block';
 
-    // Kamera mit "environment" für Hauptkamera und hohe Auflösung aktivieren
     navigator.mediaDevices.enumerateDevices()
       .then(devices => {
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         const userMediaConstraints = {
           video: {
-            deviceId: videoDevices.length > 1 ? { exact: videoDevices[1].deviceId } : undefined,
+            deviceId: videoDevices.length > 0 ? { exact: videoDevices[0].deviceId } : undefined,
             facingMode: { exact: "environment" },
             width: { ideal: 1280 },
             height: { ideal: 720 }
@@ -195,7 +193,6 @@
         const track = stream.getVideoTracks()[0];
         const capabilities = track.getCapabilities();
 
-        // Zoom und Fokus einstellen
         if (capabilities.zoom) {
           zoomControl.min = capabilities.zoom.min;
           zoomControl.max = capabilities.zoom.max;
@@ -216,31 +213,25 @@
           };
         }
 
-        setInterval(() => {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+          if (result) {
+            const isbn = result.text;
+            processISBN(isbn);
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+            cameraContainer.style.display = 'none';
+          }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err);
+          }
+        });
 
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          const codeReader = new ZXing.BrowserMultiFormatReader();
-
-          codeReader.decodeFromImageData(imageData)
-            .then(result => {
-              const isbn = result.text;
-              processISBN(isbn);
-              stream.getTracks().forEach(track => track.stop());
-              video.srcObject = null;
-              cameraContainer.style.display = 'none';
-            })
-            .catch(() => {});
-        }, 1000);
       })
       .catch(err => alert("Fehler beim Zugriff auf die Kamera: " + err.message));
   }
 
   window.onload = displayBooks;
 </script>
-<script src="https://unpkg.com/@zxing/library@0.18.6"></script>
-
 </body>
 </html>
