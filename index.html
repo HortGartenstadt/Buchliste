@@ -70,7 +70,7 @@
     }
     #cameraContainer video {
       width: 640px; /* Breiteres Kamerafenster */
-      height: 180px; /* Höhe des Kamerafensters */
+      height: 480px; /* Höhe des Kamerafensters */
     }
     #controls {
       display: flex;
@@ -176,7 +176,7 @@
     cameraContainer.style.display = 'block';
 
     // Kamera mit "environment" für Hauptkamera und hohe Auflösung aktivieren
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } })
       .then(stream => {
         video.srcObject = stream;
 
