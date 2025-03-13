@@ -69,7 +69,16 @@
       padding: 10px;
     }
     #cameraContainer video {
-      width: 300px;
+      width: 350px; /* Breite des Kamerafensters */
+      height: 50px; /* Höhe des Kamerafensters */
+    }
+    #controls {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    #controls label {
+      margin-right: 10px;
     }
   </style>
 </head>
@@ -78,7 +87,13 @@
 <h1>Buchinventar</h1>
 <button onclick="startScanner()">📷 Scanner starten</button>
 <div id="cameraContainer">
-  <video id="video"></video>
+  <video id="video" autoplay playsinline></video>
+  <div id="controls">
+    <label for="zoom">Zoom:</label>
+    <input type="range" id="zoom" name="zoom" min="1" max="3" step="0.1" value="1">
+    <label for="focus">Schärfe:</label>
+    <input type="range" id="focus" name="focus" min="0" max="100" step="1" value="50">
+  </div>
 </div>
 <table id="bookTable">
   <thead>
@@ -153,16 +168,41 @@
   function startScanner() {
     const video = document.getElementById('video');
     const cameraContainer = document.getElementById('cameraContainer');
+    const zoomControl = document.getElementById('zoom');
+    const focusControl = document.getElementById('focus');
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
 
     cameraContainer.style.display = 'block';
 
-    // Kamera mit "environment" für Hauptkamera aktivieren
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    // Kamera mit "environment" für Hauptkamera und hohe Auflösung aktivieren
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } })
       .then(stream => {
         video.srcObject = stream;
-        video.play();
+
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+
+        // Zoom und Fokus einstellen
+        if (capabilities.zoom) {
+          zoomControl.min = capabilities.zoom.min;
+          zoomControl.max = capabilities.zoom.max;
+          zoomControl.step = capabilities.zoom.step;
+          zoomControl.value = track.getSettings().zoom || capabilities.zoom.min;
+          zoomControl.oninput = () => {
+            track.applyConstraints({ advanced: [{ zoom: zoomControl.value }] });
+          };
+        }
+
+        if (capabilities.focusMode) {
+          focusControl.min = capabilities.focusDistance.min;
+          focusControl.max = capabilities.focusDistance.max;
+          focusControl.step = capabilities.focusDistance.step;
+          focusControl.value = track.getSettings().focusDistance || (capabilities.focusDistance.min + capabilities.focusDistance.max) / 2;
+          focusControl.oninput = () => {
+            track.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: focusControl.value }] });
+          };
+        }
 
         setInterval(() => {
           canvas.width = video.videoWidth;
