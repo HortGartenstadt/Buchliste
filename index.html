@@ -1,213 +1,202 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Buch-Inventar</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            margin: 20px;
-            color: #333;
-        }
-        h1 {
-            text-align: center;
-            color: #444;
-        }
-        #startButton {
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 20px;
-            margin-bottom: 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-            font-size: 16px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        #startButton:hover {
-            background-color: #45a049;
-        }
-        video {
-            width: 100%;
-            max-width: 400px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        th, td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
-        }
-        th {
-            background-color: #4CAF50;
-            color: white;
-        }
-        img {
-            width: 50px;
-            height: 75px;
-            object-fit: cover;
-            border-radius: 4px;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buchinventar</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      margin-bottom: 20px;
+      display: block;
+      margin: 0 auto;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    img {
+      height: 100px;
+      width: auto;
+      object-fit: cover;
+      border-radius: 5px;
+    }
+    .scanner-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 300px;
+      height: 100px;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border: 2px solid #ccc;
+      z-index: 1000;
+      display: none;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  </style>
 </head>
 <body>
+  <h1>Buchinventar</h1>
+  <button onclick="startScanner()">Scanner starten</button>
+  
+  <div class="scanner-container" id="scannerContainer">
+    <video id="scanner"></video>
+  </div>
 
-<h1>Buch-Inventar</h1>
-<button id="startButton">Scanner starten</button>
-<video id="video" class="hidden" autoplay></video>
-
-<table id="bookTable">
+  <table id="inventoryTable">
     <thead>
-        <tr>
-            <th>ISBN</th>
-            <th>Titel</th>
-            <th>Autor</th>
-            <th>Cover</th>
-            <th>Anzahl</th>
-        </tr>
+      <tr>
+        <th>ISBN</th>
+        <th>Titel</th>
+        <th>Autor</th>
+        <th>Cover</th>
+        <th>Anzahl</th>
+      </tr>
     </thead>
     <tbody>
     </tbody>
-</table>
+  </table>
 
-<script>
-    let scanning = false;
+  <script>
+    let scannerActive = false;
+    let scanner;
 
-    async function startScanner() {
-        const constraints = {
-            video: {
-                facingMode: { ideal: "environment" }, // Verwendet die Rückkamera ohne Weitwinkel
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
+    function startScanner() {
+      const scannerContainer = document.getElementById('scannerContainer');
+      scannerContainer.style.display = 'block';
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            const video = document.getElementById("video");
-            video.srcObject = stream;
-            video.classList.remove("hidden");
-            video.play();
-
-            scanning = true;
-            scanBarcode(video);
-        } catch (error) {
-            console.error("Fehler beim Zugriff auf die Kamera: ", error);
-            alert("Kamera-Zugriff fehlgeschlagen");
+      navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 300 },
+          height: { ideal: 100 }
         }
+      })
+      .then(stream => {
+        const video = document.getElementById('scanner');
+        video.srcObject = stream;
+        video.setAttribute('playsinline', true);
+        video.play();
+
+        scanner = new BarcodeDetector({ formats: ['ean-13'] });
+        scanLoop(video);
+      })
+      .catch(error => {
+        console.error('Kamera-Fehler:', error);
+      });
     }
 
-    async function scanBarcode(video) {
-        const BarcodeDetector = window.BarcodeDetector || null;
-        if (!BarcodeDetector) {
-            alert("Barcode-Scanner wird nicht unterstützt");
-            return;
+    async function scanLoop(video) {
+      if (!scannerActive) return;
+
+      try {
+        const barcodes = await scanner.detect(video);
+        if (barcodes.length > 0) {
+          const isbn = barcodes[0].rawValue;
+          handleISBN(isbn);
         }
+      } catch (error) {
+        console.error('Scan-Fehler:', error);
+      }
 
-        const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
-        
-        async function detect() {
-            if (!scanning) return;
+      requestAnimationFrame(() => scanLoop(video));
+    }
 
-            const barcodes = await detector.detect(video);
-            if (barcodes.length > 0) {
-                const isbn = barcodes[0].rawValue;
-                console.log("ISBN erkannt:", isbn);
-                addOrUpdateBook(isbn);
-                scanning = false; // Scanner stoppen nach erfolgreichem Scan
-                video.srcObject.getTracks().forEach(track => track.stop());
-                video.classList.add("hidden");
+    function handleISBN(isbn) {
+      if (!isbn) return;
+
+      fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.totalItems > 0) {
+            const book = data.items[0].volumeInfo;
+            const title = book.title || "Unbekannt";
+            const author = book.authors ? book.authors.join(", ") : "Unbekannt";
+            const cover = book.imageLinks ? book.imageLinks.thumbnail : "";
+
+            const table = document.getElementById('inventoryTable').getElementsByTagName('tbody')[0];
+            let existingRow = [...table.rows].find(row => row.cells[0].innerText === isbn);
+
+            if (existingRow) {
+              let count = parseInt(existingRow.cells[4].innerText) || 1;
+              existingRow.cells[4].innerText = count + 1;
             } else {
-                requestAnimationFrame(detect);
+              const newRow = table.insertRow();
+              newRow.insertCell(0).innerText = isbn;
+              newRow.insertCell(1).innerText = title;
+              newRow.insertCell(2).innerText = author;
+              newRow.insertCell(3).innerHTML = cover ? `<img src="${cover}" alt="Cover">` : '';
+              newRow.insertCell(4).innerText = 1;
             }
-        }
-        detect();
+
+            saveData();
+          }
+        })
+        .catch(error => console.error('Fehler beim Abrufen der Daten:', error));
     }
 
-    async function fetchBookData(isbn) {
-        const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`;
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            if (data.totalItems > 0) {
-                const book = data.items[0].volumeInfo;
-                return {
-                    title: book.title || "Unbekannt",
-                    author: book.authors ? book.authors.join(", ") : "Unbekannt",
-                    cover: book.imageLinks ? book.imageLinks.thumbnail : ""
-                };
-            }
-        } catch (error) {
-            console.error("Fehler beim Abrufen von Buchdaten:", error);
-        }
-        return null;
+    function saveData() {
+      const table = document.getElementById('inventoryTable').getElementsByTagName('tbody')[0];
+      const data = [...table.rows].map(row => {
+        return {
+          isbn: row.cells[0].innerText,
+          title: row.cells[1].innerText,
+          author: row.cells[2].innerText,
+          cover: row.cells[3].innerHTML,
+          count: row.cells[4].innerText
+        };
+      });
+      localStorage.setItem('bookInventory', JSON.stringify(data));
     }
 
-    async function addOrUpdateBook(isbn) {
-        const table = document.getElementById("bookTable").getElementsByTagName("tbody")[0];
-        for (let row of table.rows) {
-            if (row.cells[0].innerText === isbn) {
-                // Anzahl erhöhen
-                row.cells[4].innerText = parseInt(row.cells[4].innerText) + 1;
-                return;
-            }
-        }
-
-        const bookData = await fetchBookData(isbn);
-        const row = table.insertRow();
-
-        row.insertCell(0).innerText = isbn;
-        row.insertCell(1).innerText = bookData?.title || "Nicht gefunden";
-        row.insertCell(2).innerText = bookData?.author || "Nicht gefunden";
-        row.insertCell(3).innerHTML = bookData?.cover ? `<img src="${bookData.cover}" alt="Cover">` : "Kein Bild";
-        row.insertCell(4).innerText = 1;
-
-        // Speichern in localStorage
-        saveDataToLocalStorage();
+    function loadData() {
+      const data = JSON.parse(localStorage.getItem('bookInventory')) || [];
+      const table = document.getElementById('inventoryTable').getElementsByTagName('tbody')[0];
+      data.forEach(book => {
+        const newRow = table.insertRow();
+        newRow.insertCell(0).innerText = book.isbn;
+        newRow.insertCell(1).innerText = book.title;
+        newRow.insertCell(2).innerText = book.author;
+        newRow.insertCell(3).innerHTML = book.cover;
+        newRow.insertCell(4).innerText = book.count;
+      });
     }
 
-    function saveDataToLocalStorage() {
-        const table = document.getElementById("bookTable").getElementsByTagName("tbody")[0];
-        const data = Array.from(table.rows).map(row => ({
-            isbn: row.cells[0].innerText,
-            title: row.cells[1].innerText,
-            author: row.cells[2].innerText,
-            cover: row.cells[3].querySelector("img")?.src || "",
-            count: row.cells[4].innerText
-        }));
-        localStorage.setItem("bookData", JSON.stringify(data));
-    }
-
-    function loadDataFromLocalStorage() {
-        const data = JSON.parse(localStorage.getItem("bookData") || "[]");
-        for (let book of data) {
-            addOrUpdateBook(book.isbn);
-        }
-    }
-
-    document.getElementById("startButton").addEventListener("click", startScanner);
-    window.onload = loadDataFromLocalStorage;
-</script>
-
+    window.onload = loadData;
+  </script>
 </body>
 </html>
-
