@@ -176,7 +176,19 @@
     cameraContainer.style.display = 'block';
 
     // Kamera mit "environment" für Hauptkamera und hohe Auflösung aktivieren
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } })
+    navigator.mediaDevices.enumerateDevices()
+      .then(devices => {
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const userMediaConstraints = {
+          video: {
+            deviceId: videoDevices.length > 1 ? { exact: videoDevices[1].deviceId } : undefined,
+            facingMode: { exact: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+        return navigator.mediaDevices.getUserMedia(userMediaConstraints);
+      })
       .then(stream => {
         video.srcObject = stream;
 
